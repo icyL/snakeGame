@@ -1,0 +1,263 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>基于HTML5的贪吃蛇游戏</title>
+    <style>
+        h1{
+           text-align: center;
+        }
+        #game{
+            width:520px;
+            height:540px;
+            background-color: #e8e8e8;
+            border-radius:10px;
+            box-shadow:0 0 10px #000 ;
+            margin:50px auto;
+            text-align: center;
+        }
+        #myCanvas {
+            margin:10px 0;
+            border: 3px solid #cccccc;
+            border-radius:10px;
+            box-sizing: border-box;
+            background-color: #fff;
+        }
+        #btn{
+            width:520px;
+            display: flex;
+            justify-content: space-around;
+        }
+        /*button{*/
+            /*background-color: #fff;*/
+            /*outline: none;*/
+        /*}*/
+    </style>
+</head>
+<body>
+<h1>基于HTML5的贪吃蛇游戏</h1>
+<div id="game">
+    当前得分：<span id="score">0</span>
+    <canvas id="myCanvas" width="450" height="450"></canvas>
+    <div id="btn">
+        <button onclick="beginGame();">开始游戏</button>
+        <button onclick="stopGame();">暂停游戏</button>
+        <button onclick="endGame();">退出游戏</button>
+    </div>
+</div>
+
+<script>
+    //获取元素
+    var score=document.getElementById("score");
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");//创建2D的context对象
+
+    var cellW=15,cellH = 15; //方格宽高
+    var gridCols=canvas.width/cellW;//列数
+    var gridRows=canvas.height/cellH;//行数
+    var currentScore=0; //游戏得分
+    var isMove = false; //代表贪吃蛇是否在移动的标识，默认不动
+    var timer=null;    //定时器标识符
+
+    //贪吃蛇身体位置
+    function cell(x, y, d) {
+        this.x = x;
+        this.y = y;
+        this.d = d;//控制贪吃蛇方向的键码值
+        return this;
+    }
+    var snaLen = 6; //贪吃蛇初始长度
+    var snake = []; //贪吃蛇身体数组
+    for (var i = 0; i < snaLen; i++) {
+        snake[i] = new cell(i, 0, 39);//默认贪吃蛇在第一行靠左位置，键码值为39表示贪吃蛇起始方向往右
+    }
+    var head = snake[snaLen - 1]; //贪吃蛇头部，占身体一个方格
+
+    //食物位置
+    function Food(x, y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+    //初始食物位置
+    var foodx = Math.ceil(Math.random() * gridCols - 1);//用随机数设置食物横坐标
+    var foody = Math.ceil(Math.random() * gridRows - 1);//用随机数设置食物纵坐标
+    var food = new Food(foodx, foody);//创建食物
+
+    /*设置食物随机出现的位置坐标*/
+    function initFood() {
+        foodx = Math.ceil(Math.random() * gridCols - 1);
+        foody = Math.ceil(Math.random() * gridRows - 1);
+        for (var i = 0; i < snake.length; i++) {
+            if (snake[i].x === foodx && snake[i].y === foody) { //当贪吃蛇头部坐标正好等于食物坐标时
+                initFood(); //递归设置新的食物出现的随机坐标
+            }
+        }
+    }
+
+    /*绘制食物*/
+    function drawFood() {
+        ctx.fillStyle = "green";//设置用于填充食物的颜色
+        ctx.beginPath();//起始一条路径
+        ctx.rect(food.x * cellW, food.y * cellH, cellW, cellH);//创建矩形方格的食物
+        ctx.closePath();//创建从当前点回到起始点的路径
+        ctx.fill();//填充当前绘图（路径）
+    }
+
+    /*绘制游戏界面*/
+    function draw() {
+        ctx.clearRect(0, 0, 450, 450);//清空矩形的区域
+
+        /*绘制边框*/
+        ctx.lineWidth=1;//设置线条宽度
+        ctx.strokeStyle="#a0a0a0";//设置用于笔触的颜色
+        ctx.beginPath();//起始一条路径
+        //横线
+        for(var col=0;col<=gridCols;col++)	{
+            var x=col*cellW;//边框长
+            ctx.moveTo(x,0);//把路径移动到画布中的指定点(x,0)
+            ctx.lineTo(x,canvas.height);//创建从(x,0)到(x,canvas.height)的线条
+        }
+        //竖线
+        for(var row=0; row<=gridRows; row++){
+            var y=row*cellH;//边框高
+            ctx.moveTo(0,y);//把路径移动到画布中的指定点(0,y)
+            ctx.lineTo(canvas.width,y);//创建从(0,y)到(canvas.width,y)的线条
+        }
+        ctx.stroke();//绘制已定义的路径
+
+        /*绘制贪吃蛇的身体*/
+        for (var j = 0; j < snake.length; j++){
+            ctx.fillStyle = "blue";//设置用于填充身体的颜色
+            if (j === snake.length - 1) {
+                ctx.fillStyle = "red";//设置用于填充头部的颜色
+            }
+            ctx.beginPath();//起始一条路径
+            ctx.rect(snake[j].x * cellW, snake[j].y * cellH, cellW, cellH);//创建贪吃蛇身体的矩形
+            ctx.closePath();//创建从当前点回到起始点的路径
+            ctx.fill();//填充当前绘图（路径）
+            ctx.stroke();//绘制已定义的路径
+        }
+
+        drawFood();//调用食物绘制方法
+
+        /*贪吃蛇吃到食物过程*/
+        if (head.x === food.x && head.y === food.y){ //当贪吃蛇头部坐标正好等于食物坐标时
+            initFood();//设置新的食物出现的随机坐标
+            food = new Food(foodx, foody);//创建新的食物
+            drawFood();//绘制新的食物
+
+            //增加蛇的长度
+            var newCell = new cell(head.x, head.y, head.d);//创建贪吃蛇吃到食物后增加的身体方格
+            switch (head.d) { //键码值
+                case 40: //向下的键码值
+                    newCell.y++;//贪吃蛇纵坐标加1，即向下移动
+                    break;
+                case 39: //向右的键码值
+                    newCell.x++; //贪吃蛇横坐标加1，即向右移动
+                    break;
+                case 38:  //向上的键码值
+                    newCell.y--; //贪吃蛇纵坐标减1，即向上移动
+                    break;
+                case 37: //向左的键码值
+                    newCell.x--; //贪吃蛇横坐标减1，即向左移动
+                    break;
+            }
+            snake[snake.length] = newCell;//增加一个身体方格，更新贪吃蛇的身体长度
+            head = newCell;//把增加的长度给头部
+            currentScore+=10;//每吃到食物，玩家得分就加10
+            score.innerHTML=currentScore.toString();//在页面上显示游戏得分
+        }
+    }
+
+    draw();//调用该方法绘制游戏界面
+
+    //监听键盘事件
+    document.onkeydown = function(e){ //键盘按下事件
+        //键码值：下40 ， 右边39，左边37，上38
+        var keyCode = e.keyCode;
+        //head.d - keyCode !== 2 && head.d - keyCode !== -2表示贪吃蛇向上（下）移动时，不能直接变为向下（上），向左（右）移动时，不能直接变为向右（左）
+        if (head.d - keyCode !== 2 && head.d - keyCode !== -2 && keyCode >= 37 && keyCode <= 40){ //当玩家按了这这四个方向键时
+            moveSnake(keyCode);//控制贪吃蛇移动的方向
+        }
+    };
+
+    /*控制蛇移动方向*/
+    function moveSnake(keyCode) {
+       if(isMove){ //若贪吃蛇正在移动
+           var newSnake = []; //创建新的贪吃蛇来更新原贪吃蛇的位置
+           var newCell = new cell(head.x, head.y, head.d); //贪吃蛇头部
+           //贪吃蛇身体
+           for (var i = 1; i < snake.length; i++) {
+               newSnake[i - 1] = snake[i];
+           }
+           newSnake[snake.length - 1] = newCell;
+           newCell.d = keyCode;//键码值
+           switch (keyCode) {
+               case 40: //向下的键码值
+                   newCell.y++;//贪吃蛇纵坐标加1，即向下移动
+                   break;
+               case 39: //向右的键码值
+                   newCell.x++; //贪吃蛇横坐标加1，即向右移动
+                   break;
+               case 38:  //向上的键码值
+                   newCell.y--; //贪吃蛇纵坐标减1，即向上移动
+                   break;
+               case 37: //向左的键码值
+                   newCell.x--; //贪吃蛇横坐标减1，即向左移动
+                   break;
+           }
+           snake = newSnake; //把新贪吃蛇赋给原来的贪吃蛇，即代表原贪吃蛇改变了方向
+           head = snake[snake.length - 1];
+           checkDeath(); //游戏规则判定
+           draw(); //绘制游戏界面
+       }
+    }
+
+    /*游戏规则判定*/
+    function checkDeath() {
+        if (head.x >= gridCols || head.y >= gridRows || head.x < 0 || head.y < 0) { //如果贪吃蛇身体超出边框
+            alert("游戏结束! 您本次的游戏得分为："+currentScore);
+            window.location.reload();//刷新页面
+        }
+        for (var i = 0; i < snake.length - 1; i++) {
+            if (head.x === snake[i].x && head.y === snake[i].y) { //如果贪吃蛇咬到自己的身体
+                alert("游戏结束! 您本次的游戏得分为："+currentScore);
+                window.location.reload(); //重新加载页面
+            }
+        }
+    }
+
+    /*贪吃蛇移动*/
+    function moveClock() {
+        moveSnake(head.d);
+    }
+
+    /*开始游戏*/
+    function beginGame() {
+        clearInterval(timer);//先清除定时器，以免多次按开始游戏按钮造成贪吃蛇加速
+        timer=setInterval(moveClock, 300);//设置定时器
+        //   !isMove && timer;
+        isMove = true;
+    }
+
+    /*暂停游戏*/
+    function stopGame() {
+        clearInterval(timer);//清除定时器
+        isMove =false;
+    }
+
+    /*玩家自己结束游戏*/
+    function endGame() {
+        if(confirm('游戏还未结束，确定要退出吗?')===true){
+            window.location.reload();//刷新页面
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+</script>
+
+</body>
+</html>
