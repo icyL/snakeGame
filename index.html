@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -112,13 +112,13 @@
         ctx.lineWidth=1;//设置线条宽度
         ctx.strokeStyle="#a0a0a0";//设置用于笔触的颜色
         ctx.beginPath();//起始一条路径
-        //横线
+        //竖线
         for(var col=0;col<=gridCols;col++)	{
             var x=col*cellW;//边框长
             ctx.moveTo(x,0);//把路径移动到画布中的指定点(x,0)
             ctx.lineTo(x,canvas.height);//创建从(x,0)到(x,canvas.height)的线条
         }
-        //竖线
+        //横线
         for(var row=0; row<=gridRows; row++){
             var y=row*cellH;//边框高
             ctx.moveTo(0,y);//把路径移动到画布中的指定点(0,y)
