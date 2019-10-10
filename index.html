@@ -176,8 +176,9 @@
     document.onkeydown = function(e){ //键盘按下事件
         //键码值：下40 ， 右边39，左边37，上38
         var keyCode = e.keyCode;
+        //head.d!==keyCode是让同一个方向键不能连续多次点击，否则会使贪吃蛇同一个方向也会运动一个方格而造成速度变快
         //head.d - keyCode !== 2 && head.d - keyCode !== -2表示贪吃蛇向上（下）移动时，不能直接变为向下（上），向左（右）移动时，不能直接变为向右（左）
-        if (head.d - keyCode !== 2 && head.d - keyCode !== -2 && keyCode >= 37 && keyCode <= 40){ //当玩家按了这这四个方向键时
+        if (keyCode >= 37 && keyCode <= 40 && head.d!==keyCode && head.d - keyCode !== 2 && head.d - keyCode !== -2 ){ //当玩家按了这这四个方向键时
             moveSnake(keyCode);//控制贪吃蛇移动的方向
         }
     };
